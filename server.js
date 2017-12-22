@@ -60,6 +60,21 @@ router.get('/drivers', function (req, res) {
     });
 });
 
+router.get('/driver', function (req, res) {
+    var response = {};
+    mongo.driver.findOne({'driverNumber': req.query['driverNumber']})
+    .populate({ path: 'dispatchesOfPastDuty dispatchesOfCurrentDuty planDispatches', populate: { path: 'manifest', model: mongo.manifest}})
+    .exec(function(err, data){
+            if(err){
+                response = {"error" : true, "message" : "Error fetching data"};
+            }
+            else{
+                response = data;
+            }
+            res.json(response);
+    });
+});
+
 app.use('/api', router);
 app.listen(port);
 console.log('REST API is running at ' + port);
