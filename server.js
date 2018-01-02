@@ -34,7 +34,7 @@ router.get('/manifests', function (req, res) {
 
 router.get('/dispatches', function (req, res) {
     var response = {};
-    mongo.dispatch.find().populate('manifest').exec(function(err, data){
+    mongo.dispatch.find({}, function(err, data){
         if(err){
             response = {"error" : true, "message" : "Error fetching data"};
         }
@@ -48,7 +48,7 @@ router.get('/dispatches', function (req, res) {
 router.get('/drivers', function (req, res) {
     var response = {};
     mongo.driver.find()
-    .populate({ path: 'dispatchesOfPastDuty dispatchesOfCurrentDuty planDispatches', populate: { path: 'manifest', model: mongo.manifest}})
+    .populate({ path: 'planDispatches', populate: { path: 'manifest', model: mongo.manifest}})
     .exec(function(err, data){
             if(err){
                 response = {"error" : true, "message" : "Error fetching data"};
@@ -63,7 +63,7 @@ router.get('/drivers', function (req, res) {
 router.get('/driver', function (req, res) {
     var response = {};
     mongo.driver.findOne({'driverNumber': req.query['driverNumber']})
-    .populate({ path: 'dispatchesOfPastDuty dispatchesOfCurrentDuty planDispatches', populate: { path: 'manifest', model: mongo.manifest}})
+    .populate({ path: 'planDispatches', populate: { path: 'manifest', model: mongo.manifest}})
     .exec(function(err, data){
             if(err){
                 response = {"error" : true, "message" : "Error fetching data"};
