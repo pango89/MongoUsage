@@ -98,6 +98,7 @@ router.get('/drivers', function (req, res) {
 
 router.post('/drivers', function (req, res) {
     var response = {};
+    var summary = {};
     var queryFilter = {};
     var querySort = {};
     
@@ -149,9 +150,37 @@ router.post('/drivers', function (req, res) {
         }
         else{
             response = data;
-        }
+        }   
         res.json(response);
     });
+
+    // mongo.driver
+    // .aggregate(
+    //     [
+    //         {
+    //             $match : queryFilter
+    //         },
+    //         {
+    //             $group : { 
+    //                 _id : null,
+    //                 sumSeniority : { $sum : "$seniority" },
+    //                 averageSeniority : { $avg : "$seniority"},
+    //                 minSeniority : { $min : "$seniority"},
+    //                 maxSeniority : { $max : "$seniority"},
+    //                 count : { $sum : 1 } 
+    //             }
+    //         }
+    //     ]
+    // )
+    // .exec(function(err, data){
+    //     if(err){
+    //         response = {"error" : true, "message" : "Error fetching data"};
+    //     }
+    //     else{
+    //         summary = data;
+    //     }
+    //     res.json(response);
+    // });
 });
 
 app.use('/api', router);
