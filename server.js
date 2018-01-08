@@ -45,36 +45,6 @@ router.get('/dispatches', function (req, res) {
     });
 });
 
-// router.get('/drivers', function (req, res) {
-//     var response = {};
-//     mongo.driver.find()
-//     .populate({ path: 'planDispatches', populate: { path: 'manifest', model: mongo.manifest}})
-//     .exec(function(err, data){
-//             if(err){
-//                 response = {"error" : true, "message" : "Error fetching data"};
-//             }
-//             else{
-//                 response = data;
-//             }
-//             res.json(response);
-//     });
-// });
-
-// router.get('/driver', function (req, res) {
-//     var response = {};
-//     mongo.driver.findOne({'driverNumber': req.query['driverNumber']})
-//     .populate({ path: 'planDispatches', populate: { path: 'manifest', model: mongo.manifest}})
-//     .exec(function(err, data){
-//             if(err){
-//                 response = {"error" : true, "message" : "Error fetching data"};
-//             }
-//             else{
-//                 response = data;
-//             }
-//             res.json(response);
-//     });
-// });
-
 router.get('/drivers', function (req, res) {
     var response = {};
     var queryForMongoose = {};
@@ -179,8 +149,57 @@ router.post('/drivers', function (req, res) {
     //     else{
     //         summary = data;
     //     }
-    //     res.json(response);
+    //     res.json(summary);
     // });
+});
+
+
+router.put('/UpdateDriver', function (req, res) {
+    var response = {};
+    mongo.driver.findByIdAndUpdate(
+        req.body.id, 
+        { $set: 
+            { 
+                name: req.body.name, 
+                currentTerminalId: req.body.currentTerminalId 
+            }
+        },
+        { new : true },
+        function(err, data){
+                if(err){
+                    response = {"error" : true, "message" : "Error Updating data"};
+                }   
+                else{
+                    response = data;
+                }   
+                res.json(response);
+        });
+});
+
+router.post('/AddDriver', function (req, res) {
+    var response = {};
+    mongo.driver.insertMany(req.body, function(err, data){
+        if(err){
+            response = {"error" : true, "message" : "Error Adding data"};
+        }
+        else{
+            response = data;
+        }
+        res.json(response);
+    });
+});
+
+router.delete('/DeleteDriver', function (req, res) {
+    var response = {};
+    mongo.driver.findByIdAndRemove(req.query['id'], function(err, data){
+        if(err){
+            response = {"error" : true, "message" : "Error deleting data"};
+        }
+        else{
+            response = data;
+        }
+        res.json(response);
+    });
 });
 
 app.use('/api', router);
