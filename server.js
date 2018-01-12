@@ -1,5 +1,7 @@
 const express = require('express');
 const mongoose = require("mongoose");
+const ObjectId = mongoose.Types.ObjectId; 
+
 mongoose.Promise = global.Promise;
 const mongo = require('./model/mongo');
 const bodyParser = require('body-parser');
@@ -153,17 +155,45 @@ router.post('/drivers', function (req, res) {
     // });
 });
 
+// router.put('/UpdateDriver', function (req, res) {
+//     var response = {};
+//     mongo.driver.findOneAndUpdate(
+//         { "_id": req.body.id, "dispatchesOfCurrentDuty.driver": "19-7112" }, 
+//         { 
+//             $set: 
+//             { 
+//                 name: req.body.name, 
+//                 currentTerminalId: req.body.currentTerminalId 
+//             },
+//             $inc: { "dispatchesOfCurrentDuty.$.miles": 100 }        
+//         },
+//         { new : true },
+//         function(err, data){
+//                 if(err){
+//                     response = {"error" : true, "message" : "Error Updating data"};
+//                 }   
+//                 else{
+//                     response = data;
+//                 }   
+//                 res.json(response);
+//         });
+// });
 
 router.put('/UpdateDriver', function (req, res) {
     var response = {};
-    mongo.driver.findByIdAndUpdate(
-        req.body.id, 
-        { $set: 
-            { 
-                name: req.body.name, 
-                currentTerminalId: req.body.currentTerminalId 
-            }
-        },
+    mongo.driver.updateMany(
+        {
+            "_id": req.body.id,
+            "dispatchesOfCurrentDuty.miles" : {$gte: 300}
+        }, 
+        { 
+            $set: 
+                { 
+                    name: req.body.name, 
+                    currentTerminalId: req.body.currentTerminalId
+                },
+            $inc: { "dispatchesOfCurrentDuty.$.miles": -100 },
+        },        
         { new : true },
         function(err, data){
                 if(err){
@@ -200,6 +230,87 @@ router.delete('/DeleteDriver', function (req, res) {
         }
         res.json(response);
     });
+});
+
+router.post('/DeleteDispatch', async function (req, res) {
+    var dispatchId = req.body.dispatchId;
+    var driverId = req.body.driverId;
+    var response = {};
+
+    /* Implementing two phase commit in mongodb*/
+
+    var transaction = new mongo.transaction({
+        source: dispatchId,
+        target: driverId,
+        status: 'initial',
+        lastModified: new Date()
+    });
+
+    /* Create a new transaction with initial state*/
+    let t;
+    try {
+        t = await transaction.save();
+    } catch (error) {
+        console.log(error);
+    }
+    
+    /* Update the transaction state to pending*/
+    let a;
+    try {
+        a = await mongo.transaction.update({ _id: t._id, status: "initial" }, { $set: { status: "pending" }, $currentDate: { lastModified: true }}).exec();
+    } catch (error) {
+        console.log(error);
+    }
+
+    /* Update the first involved entity*/
+    let b;
+    try {
+        b = await mongo.dispatch.update({ _id: new ObjectId(t.source), pendingTransactions: { $ne: t._id } }, { isDeleted: true, $push: { pendingTransactions: t._id }}).exec();
+    } catch (error) {
+        console.log(error);
+    }
+
+    /* Update the second involved entity*/
+    let c;
+    try {
+        c = await mongo.driver.update({ _id: new ObjectId(t.target), pendingTransactions: { $ne: t._id } }, { $pull: { planDispatches: new ObjectId(t.source) }, $push: { pendingTransactions: t._id }}).exec();
+    } catch (error) {
+        console.log(error);
+    }
+
+    /* Update the transaction state to applied*/
+    let d;
+    try {
+        d = await mongo.transaction.update({ _id: t._id, status: "pending" }, { $set: { status: "applied" }, $currentDate: { lastModified: true }}).exec();
+    } catch (error) {
+        console.log(error);
+    }
+
+    /* Update the pendingTransactions array for the first involved entity*/
+    let e;
+    try {
+        e = await mongo.dispatch.update({ _id: new ObjectId(t.source), pendingTransactions: t._id }, { $pull: { pendingTransactions: t._id }}).exec();
+    } catch (error) {
+        console.log(error);
+    }
+
+    /* Update the pendingTransactions array for the second involved entity*/
+    let f;
+    try {
+        f = await mongo.driver.update({ _id: new ObjectId(t.target), pendingTransactions: t._id }, { $pull: { pendingTransactions: t._id }}).exec();
+    } catch (error) {
+        console.log(error);
+    }
+
+    /* Update the transaction state to done*/
+    let g;
+    try {
+        g = await mongo.transaction.update({ _id: t._id, status: "applied" }, { $set: { status: "done" }, $currentDate: { lastModified: true }}).exec();
+    } catch (error) {
+        console.log(error);
+    }
+
+    res.json(b);
 });
 
 app.use('/api', router);

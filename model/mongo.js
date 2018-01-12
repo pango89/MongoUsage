@@ -56,7 +56,9 @@ const dispatchSchema = new Schema({
 	"remainingDriveTime": Date,
 	"remainingDutyTime": Date,
 	"requiredDriveTime": Date,
-	"routeType": String
+	"routeType": String,
+	"isDeleted": Boolean,
+	"pendingTransactions":[{ type: Schema.Types.ObjectId, ref:'Transaction' }]
 });
 module.exports.dispatch = mongoose.model('Dispatch', dispatchSchema);
 
@@ -89,6 +91,16 @@ const driverSchema = new Schema({
         "status": Number,
         "tractor": Number,
         "unplannedTerminal": String,
-        "userDriverDutyType": Number
+		"userDriverDutyType": Number,
+		"pendingTransactions":[{ type: Schema.Types.ObjectId, ref:'Transaction' }]
 });
 module.exports.driver = mongoose.model('Driver', driverSchema);
+
+const transactionSchema = new Schema({
+	"source": String,
+	"target": String,
+	"status": String,
+	"lastModified": Date
+});
+
+module.exports.transaction = mongoose.model('Transaction', transactionSchema);
