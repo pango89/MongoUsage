@@ -68,6 +68,72 @@ router.get('/drivers', function (req, res) {
     });
 });
 
+router.get('/GetAggregate1', function (req, res) {
+    var response = {};
+    var queryFilter = {};
+
+    mongo.driver
+    .aggregate(
+        [
+            {
+                $match : queryFilter
+            },
+            {
+                $group : { 
+                    _id : null,
+                    sumSeniority : { $sum : "$seniority" },
+                    averageSeniority : { $avg : "$seniority"},
+                    minSeniority : { $min : "$seniority"},
+                    maxSeniority : { $max : "$seniority"},
+                    count : { $sum : 1 } 
+                }
+            }
+        ]
+    )
+    .exec(function(err, data){
+        if(err){
+            response = {"error" : true, "message" : "Error fetching data"};
+        }
+        else{
+            response = data;
+        }
+        res.json(response);
+    });
+});
+
+router.get('/GetAggregate2', function (req, res) {
+    var response = {};
+    var queryFilter = {};
+
+    mongo.driver
+    .aggregate(
+        [
+            { $unwind: "$dispatchesOfCurrentDuty" },
+            { $match: { currentTerminalId: "19" } },
+            // { $match: { "dispatchesOfCurrentDuty.dispatchTractor": "110" } },
+            { $group: 
+                { 
+                    _id: "$driverNumber",
+                    totalWeight: { $sum: "$dispatchesOfCurrentDuty.manifest.weight" }
+                }
+            },
+            { $match: { totalWeight: { $gte: 100 } } },
+            { $sort: { totalWeight: -1 } },
+            { $limit: 15 }
+        ]
+    )
+    .exec(function(err, data){
+        if(err){
+            response = {"error" : true, "message" : "Error fetching data"};
+        }
+        else{
+            response = data;
+        }
+        res.json(response);
+    });
+});
+
+
 router.post('/drivers', function (req, res) {
     var response = {};
     var summary = {};
@@ -125,34 +191,6 @@ router.post('/drivers', function (req, res) {
         }   
         res.json(response);
     });
-
-    // mongo.driver
-    // .aggregate(
-    //     [
-    //         {
-    //             $match : queryFilter
-    //         },
-    //         {
-    //             $group : { 
-    //                 _id : null,
-    //                 sumSeniority : { $sum : "$seniority" },
-    //                 averageSeniority : { $avg : "$seniority"},
-    //                 minSeniority : { $min : "$seniority"},
-    //                 maxSeniority : { $max : "$seniority"},
-    //                 count : { $sum : 1 } 
-    //             }
-    //         }
-    //     ]
-    // )
-    // .exec(function(err, data){
-    //     if(err){
-    //         response = {"error" : true, "message" : "Error fetching data"};
-    //     }
-    //     else{
-    //         summary = data;
-    //     }
-    //     res.json(summary);
-    // });
 });
 
 // router.put('/UpdateDriver', function (req, res) {
